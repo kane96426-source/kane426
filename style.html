@@ -1,0 +1,23 @@
+<style>
+  :root { --primary: #004a99; --secondary: #6c757d; }
+  body { background: #f0f2f5; font-family: "Microsoft JhengHei", sans-serif; }
+  .navbar { background: var(--primary); color: white; padding: 15px; }
+  .nav-btn-group { display: flex; gap: 10px; margin: 20px 0; overflow-x: auto; }
+  .section { display: none; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 50px; }
+  .active { display: block; animation: fadeIn 0.5s; }
+  
+  /* 課表樣式 */
+  .timetable-table { width: 100%; border-collapse: collapse; text-align: center; }
+  .timetable-table th, .timetable-table td { border: 1px solid #ddd; padding: 10px; }
+  .slot-input { width: 100%; border: none; outline: none; background: transparent; text-align: center; }
+  .friend-status-green { background: #d4edda !important; color: #155724; }
+  .friend-status-red { background: #f8d7da !important; color: #721c24; }
+  
+  /* 留言板樣式 */
+  .post-card { border-left: 5px solid var(--primary); margin-bottom: 15px; padding: 15px; background: #fff; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+  .post-img { max-width: 100%; border-radius: 8px; margin: 10px 0; }
+  .category-badge { background: #e9ecef; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; }
+  
+  #map { height: 500px; width: 100%; border-radius: 15px; }
+  @keyframes fadeIn { from {opacity: 0;} to {opacity: 1;} }
+</style>
