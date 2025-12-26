@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --m-navy: #050A18; --m-gold: #D4AF37; --m-crimson: #8E1616; --parchment: #FDF5E6; --btn-crimson: linear-gradient(135deg, #8E1616, #4A0000); }
+    body { background-color: var(--m-navy); font-family: 'Noto Serif TC', serif; margin: 0; color: #fff; overflow-x: hidden; }
+    canvas { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+    .magic-panel { background: var(--parchment); color: #2A1A14; border: 3px solid var(--m-gold); border-radius: 15px; box-shadow: 0 0 50px rgba(212, 175, 55, 0.3); padding: 25px; background-image: url('https://www.transparenttextures.com/patterns/paper.png'); }
+    h3, .navbar-brand { font-family: 'Cinzel Decorative', cursive; color: var(--m-gold); text-shadow: 0 0 10px rgba(212, 175, 55, 0.8); }
+    .navbar { background: rgba(5, 10, 24, 0.98); border-bottom: 2px solid var(--m-gold); }
+    .artifact-btn { background: var(--btn-crimson); border: 2px solid var(--m-gold); border-radius: 10px; margin: 5px; padding: 15px 5px; font-family: 'Cinzel Decorative'; font-weight: bold; color: var(--m-gold); text-shadow: 1px 1px 3px #000; transition: 0.3s; cursor: pointer; display: flex; flex-direction: column; align-items: center; opacity: 0.85; }
+    .artifact-btn.active { opacity: 1; border-width: 3px; box-shadow: 0 0 30px var(--m-crimson); transform: scale(1.05); color: #fff; }
+    .post-card { background: rgba(255,255,255,0.98); border-left: 8px solid var(--m-crimson); padding: 20px; margin-bottom: 25px; border-radius: 8px; color: #2A1A14; }
+    .cat-tag { cursor: pointer; background: #2A1A14; color: var(--m-gold); border: 1px solid var(--m-gold); padding: 6px 12px; margin: 3px; border-radius: 20px; font-size: 0.8rem; display: inline-block; font-family: 'Cinzel Decorative'; }
+    .cat-tag.active { background: var(--m-gold); color: #000; }
+    .sort-btn { background: transparent; color: #2A1A14; border: 1px solid #2A1A14; font-size: 0.7rem; padding: 2px 10px; font-family: 'Cinzel Decorative'; transition: 0.3s; border-radius: 5px; cursor: pointer; }
+    .sort-btn.active { background: #2A1A14; color: var(--m-gold); }
+    .tt-input { width: 100%; border: none; background: transparent; text-align: center; font-weight: bold; color: var(--m-crimson); font-size: 0.85rem; }
+    #map { height: 500px; border: 5px ridge var(--m-gold); border-radius: 15px; width: 100%; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <nav class="navbar navbar-dark shadow-sm px-4 sticky-top">
+    <span class="navbar-brand">Magic Academy</span>
+    <div class="text-end small"><span id="user-display" class="fw-bold" style="color: var(--m-gold);"></span> | (UID: <span id="nav-uid" class="text-danger fw-bold"></span>) | <span style="cursor:pointer; color:#ff6b6b;" onclick="doLogout()">登出</span></div>
+  </nav>
+
+  <div class="container mt-4 mb-5">
+    <div class="row g-2 mb-4 text-center">
+      <div class="col-4"><div class="artifact-btn active" id="tab-foodMap" onclick="switchFunc('foodMap')">🧭 美食羅盤</div></div>
+      <div class="col-4"><div class="artifact-btn" id="tab-timetable" onclick="switchFunc('timetable')">📜 魔法時程</div></div>
+      <div class="col-4"><div class="artifact-btn" id="tab-board" onclick="switchFunc('board')">🔮 匿名大釜</div></div>
+    </div>
+
+    <div class="magic-panel shadow-lg">
+      <div id="foodMap" class="func-area active"><div id="map"></div></div>
+
+      <div id="timetable" class="func-area" style="display:none;">
+        <div class="row">
+          <div class="col-md-8 border-end border-dark">
+            <h4>我的魔法時程表 (UID: <span id="main-uid" class="text-danger fw-bold"></span>)</h4>
+            <div class="table-responsive"><table class="table table-bordered border-dark text-center align-middle">
+              <thead class="table-dark"><tr><th>節次 / 時間</th><th>週一</th><th>週二</th><th>週三</th><th>週四</th><th>週五</th></tr></thead>
+              <tbody id="tt-body"></tbody>
+            </table></div>
+            <button class="btn btn-danger w-100 mt-2" onclick="saveMyTt()">封印時程存檔 (Save)</button>
+          </div>
+          <div class="col-md-4 mt-4 mt-md-0">
+            <h4>羈絆名冊</h4>
+            <div id="friends-list-area"></div>
+            <div class="input-group mt-3"><input type="text" id="fuid" class="form-control border-dark" placeholder="好友 UID"><button class="btn btn-dark" onclick="addFriend()">簽訂</button></div>
+          </div>
+        </div>
+        <div id="friend-table-area" class="mt-3 p-3 rounded" style="display:none; background:rgba(255,255,255,0.4); border:2px dashed var(--m-gold);">
+           <h5 class="fw-bold text-dark">召喚結果：<span id="summon-name"></span></h5>
+           <table class="table table-sm table-bordered border-dark text-center" id="f-tt"></table>
+        </div>
+      </div>
+
+      <div id="board" class="func-area" style="display:none;">
+        <div id="category-filters" class="mb-3 text-center border-bottom pb-2">
+            <span class="cat-tag active" onclick="setFilter('全部', this)">全部</span>
+            <span class="cat-tag" onclick="setFilter('感情', this)">感情</span>
+            <span class="cat-tag" onclick="setFilter('學業', this)">學業</span>
+            <span class="cat-tag" onclick="setFilter('生活', this)">生活</span>
+            <span class="cat-tag" onclick="setFilter('閒聊', this)">閒聊</span>
+        </div>
+        <div class="row">
+          <div class="col-md-4">
+            <textarea id="p-text" class="form-control border-dark mb-2" rows="3" placeholder="傳遞預言..."></textarea>
+            <select id="p-cat" class="form-select border-dark mb-2"><option value="感情">感情</option><option value="學業">學業</option><option value="生活">生活</option><option value="閒聊">閒聊</option></select>
+            <input type="file" id="p-img" class="form-control border-dark mb-2" accept="image/*">
+            <button class="btn btn-danger w-100" style="background:var(--m-crimson);" onclick="optimizedPost()">投進大釜</button>
+          </div>
+          <div class="col-md-8">
+            <div class="text-end mb-2">
+                <button class="sort-btn active" id="btn-time" onclick="setSort('time')">新預言</button>
+                <button class="sort-btn" id="btn-likes" onclick="setSort('likes')">最高熱度</button>
+            </div>
+            <div id="posts-container"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  let user = JSON.parse(localStorage.getItem('magic_user'));
+  let map = null, allPosts = [], allRestaurants = [], myFriends = [], currentSort = 'time', currentFilter = '全部';
+
+  window.onload = () => {
+    if(!user) { doLogout(); return; }
+    document.getElementById('user-display').innerText = user.nickname;
+    document.getElementById('nav-uid').innerText = user.uid;
+    document.getElementById('main-uid').innerText = user.uid;
+    initTable(); loadMySavedTable(); switchFunc('foodMap'); initP(); draw();
+  };
+
+  function doLogout() { localStorage.removeItem('magic_user'); google.script.run.withSuccessHandler(url => { window.top.location.href = url; }).getScriptUrl(); }
+
+  function switchFunc(id) {
+    document.querySelectorAll('.func-area').forEach(a => a.style.display='none');
+    document.querySelectorAll('.artifact-btn').forEach(l => l.classList.remove('active'));
+    document.getElementById(id).style.display='block'; document.getElementById('tab-'+id).classList.add('active');
+    if(id==='foodMap') initMap(); if(id==='board') loadPosts(); if(id==='timetable') refreshFriends();
+  }
+
+  // --- 地圖核心 (修復評價顯示與刪除) ---
+  function initMap() {
+    if(map) { setTimeout(()=>map.invalidateSize(), 200); return; }
+    map = L.map('map').setView([22.9848, 120.2060], 17);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    refreshMarkers();
+  }
+  function refreshMarkers() {
+    google.script.run.withSuccessHandler(data => {
+      allRestaurants = data;
+      const redIcon = new L.Icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41] });
+      map.eachLayer(l=>{if(l instanceof L.Marker)map.removeLayer(l)});
+      allRestaurants.forEach(s => {
+        let cms = s.comments.map(c => `
+          <div class="border-bottom small py-1">
+            <b>${c.user}</b> (${c.star}⭐): ${c.text} 
+            ${c.user===user.nickname?`<small class="text-danger" style="cursor:pointer" onclick="delRevClick('${s.id}','${c.time}')"> [消滅]</small>`:''}
+          </div>`).join('');
+        let stars = `<div class="text-warning fw-bold">${"⭐".repeat(Math.round(s.avgStars))} ${s.avgStars}</div>`;
+        let pop = `<div style="width:200px"><h6>${s.name}</h6>${stars}<div class="overflow-auto mt-1" style="max-height:100px">${cms || '無歷史'}</div><div class="input-group input-group-sm mt-2"><select id="star-${s.id}" class="form-select"><option value="5">5星</option><option value="4">4星</option><option value="3">3星</option><option value="2">2星</option><option value="1">1星</option></select><input id="txt-${s.id}" class="form-control" placeholder="留言..."><button class="btn btn-dark" onclick="sendRev('${s.id}')">送出</button></div></div>`;
+        L.marker([s.lat, s.lng], {icon: redIcon}).addTo(map).bindPopup(pop);
+      });
+    }).getRestaurants();
+  }
+  function sendRev(id) { 
+    const s = document.getElementById(`star-${id}`).value, t = document.getElementById(`txt-${id}`).value;
+    google.script.run.withSuccessHandler(()=>{refreshMarkers();}).addRestaurantReview(id, user.nickname, s, t); 
+  }
+  window.delRevClick = function(id, ts) { 
+    if(confirm("抹除這段食記記憶？")) google.script.run.withSuccessHandler(refreshMarkers).deleteRestaurantReview(id, user.nickname, ts); 
+  }
+
+  // --- 課表系統 ---
+  function initTable() {
+    const times = ["08:00-08:50", "09:00-09:50", "10:10-11:00", "11:10-12:00", "13:30-14:20", "14:30-15:20", "15:40-16:30", "16:40-17:30", "18:30-19:20"];
+    let h = ''; for(let i=1; i<=9; i++) { h += `<tr><td class="table-dark"><small>${i}</small><br><sup style="font-size:0.6rem">${times[i-1]}</sup></td>` + Array(5).fill(0).map((_,j)=>`<td><input id="c-${i}-${j}" class="tt-input"></td>`).join('') + `</tr>`; }
+    document.getElementById('tt-body').innerHTML = h;
+  }
+  function loadMySavedTable() { google.script.run.withSuccessHandler(d => { if(d) document.querySelectorAll('.tt-input').forEach(i => { if (d[i.id]) i.value = d[i.id]; }); }).getFriendSchedule(user.uid); }
+  function saveMyTt() { let d={}; document.querySelectorAll('.tt-input').forEach(i=>d[i.id]=i.value); google.script.run.saveSchedule(user.uid, d); alert("時程封印成功"); }
+
+  // --- 好友紅綠燈 ---
+  function getCurrentSlot() {
+    const t = new Date().getHours() * 60 + new Date().getMinutes();
+    if (t >= 480 && t < 540) return 1; if (t >= 550 && t < 610) return 2; if (t >= 620 && t < 680) return 3; if (t >= 690 && t < 750) return 4;
+    if (t >= 810 && t < 870) return 5; if (t >= 880 && t < 940) return 6; if (t >= 950 && t < 1010) return 7; if (t >= 1020 && t < 1080) return 8;
+    return (t >= 1110) ? 9 : -1;
+  }
+  function addFriend() { google.script.run.withSuccessHandler(res=>{ if(res.status==="success") refreshFriends(); else alert(res.msg); }).addMagicFriend(user.uid, document.getElementById('fuid').value); }
+  function refreshFriends() {
+    google.script.run.withSuccessHandler(list => {
+      myFriends = list; const area = document.getElementById('friends-list-area'); area.innerHTML = "";
+      const d = new Date().getDay()-1, slot = getCurrentSlot();
+      list.forEach(f => {
+        const isBusy = (d >= 0 && d <= 4 && slot !== -1) ? (f.schedule[`c-${slot}-${d}`] && f.schedule[`c-${slot}-${d}`].trim() !== "") : false;
+        area.innerHTML += `<div class="post-card p-2 mb-1" style="cursor:pointer" onclick="summonFriendTable('${f.uid}')"><span><b style="color:${isBusy?'#dc3545':'#198754'}">●</b> ${f.nickname}</span><button class="btn btn-sm text-danger float-end" onclick="event.stopPropagation(); breakFriend('${f.uid}')">斷</button></div>`;
+      });
+    }).getFriendsListInfo(user.uid);
+  }
+  function summonFriendTable(fuid) {
+    const f = myFriends.find(x => x.uid == fuid); document.getElementById('friend-table-area').style.display='block'; document.getElementById('summon-name').innerText = f.nickname;
+    let fhtml='<thead class="table-dark"><tr><th></th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th></tr></thead><tbody>';
+    for(let i=1; i<=9; i++) { fhtml+=`<tr><td class="fw-bold table-light">${i}</td>`; for(let j=0; j<5; j++) fhtml+=`<td>${f.schedule[`c-${i}-${j}`]||''}</td>`; fhtml+='</tr>'; }
+    document.getElementById('f-tt').innerHTML=fhtml+'</tbody>';
+  }
+  function breakFriend(f) { if(confirm("解除？")) google.script.run.withSuccessHandler(refreshFriends).removeFriend(user.uid, f); }
+
+  // --- 大釜系統 (修正排序與刪除) ---
+  function setFilter(c, b) { currentFilter=c; document.querySelectorAll('.cat-tag').forEach(t=>t.classList.remove('active')); b.classList.add('active'); renderPosts(); }
+  function setSort(s) { currentSort=s; document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active')); document.getElementById('btn-' + s).classList.add('active'); renderPosts(); }
+  function loadPosts() { google.script.run.withSuccessHandler(data => { allPosts=data; renderPosts(); }).getPostsAndReplies(); }
+  
+  function renderPosts() {
+    let f = allPosts.filter(p => currentFilter==='全部' || p.category===currentFilter);
+    if(currentSort==='likes') f.sort((a,b)=>b.likes-a.likes); else f.sort((a,b)=>new Date(b.time)-new Date(a.time));
+    
+    document.getElementById('posts-container').innerHTML = f.map(p => `
+      <div class="post-card shadow-sm p-3">
+        <div class="d-flex justify-content-between small text-muted">
+            <b>[${p.category}] 匿名巫師</b>
+            <span>${p.time.split(' GMT')[0]} ${p.nickname===user.nickname?`<span class="text-danger" style="cursor:pointer" onclick="delPost('${p.id}')"> [消滅]</span>`:''}</span>
+        </div>
+        <p class="mt-2 mb-1" style="font-size:1.1rem">${p.content}</p>
+        ${p.image?`<img src="${p.image}" class="img-fluid rounded border mb-2" style="max-height:250px">`:''}
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-dark" onclick="optimizedLike('${p.id}', this)">✨ 讚 ${p.likes}</button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="toggleRep('${p.id}')">💬 迴響 (${p.replies.length})</button>
+        </div>
+        <div id="rep-sec-${p.id}" class="mt-2" style="display:none;">
+          <div id="rep-list-${p.id}">${p.replies.map(r=>`<div class="reply-box">巫師: ${r.content}</div>`).join('')}</div>
+          <div class="input-group mt-2">
+            <input id="ri-${p.id}" class="reply-input" placeholder="傳遞你的迴響...">
+            <button class="btn btn-sm btn-dark" onclick="sendReplyFixed('${p.id}')">傳遞</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+  
+  window.sendReplyFixed = function(pid) {
+    const input = document.getElementById(`ri-${pid}`), content = input.value;
+    if(!content) return;
+    document.getElementById(`rep-list-${pid}`).innerHTML += `<div class="reply-box">巫師: ${content}</div>`;
+    input.value = "";
+    google.script.run.withSuccessHandler(loadPosts).addReply(pid, "匿名巫師", content);
+  }
+
+  function toggleRep(id) { const s=document.getElementById(`rep-sec-${id}`); s.style.display=s.style.display==='none'?'block':'none'; }
+  function optimizedPost() {
+    const t=document.getElementById('p-text').value, c=document.getElementById('p-cat').value, f=document.getElementById('p-img').files[0];
+    if(!t) return alert("內容不可為空");
+    const proceed=(b64=null)=>{ allPosts.unshift({id:'temp', content:t, category:c, likes:0, time:new Date().toString(), image:b64, replies:[], nickname:user.nickname}); renderPosts(); google.script.run.withSuccessHandler(loadPosts).addPost(user.nickname, t, b64, c); document.getElementById('p-text').value=""; };
+    if(f){ const r=new FileReader(); r.onload=(e)=>proceed(e.target.result); r.readAsDataURL(f); } else proceed();
+  }
+  function delPost(pid) { if(confirm("消滅預言？")) google.script.run.withSuccessHandler(loadPosts).deletePost(pid, user.nickname); }
+  function optimizedLike(pid, b) { let cur=parseInt(b.innerText.split(' ')[2]); b.innerText=`✨ 讚 ${cur+1}`; google.script.run.withSuccessHandler(res=>{if(res.status==='error') b.innerText=`✨ 讚 ${cur}`;}).likePost(pid, user.uid); }
+
+  const cn=document.getElementById('canvas'), ctx=cn.getContext('2d');
+  let pts=[];
+  function initP() { cn.width=window.innerWidth; cn.height=window.innerHeight; pts=[]; for(let i=0;i<180;i++) pts.push({x:Math.random()*cn.width, y:Math.random()*cn.height, r:Math.random()*2+1, dy:Math.random()*-0.5, a:Math.random(), s:Math.random()*0.02}); }
+  function draw() { ctx.clearRect(0,0,cn.width,cn.height); pts.forEach(p=>{ ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fillStyle=`rgba(212,175,55,${p.a})`; ctx.fill(); p.y+=p.dy; p.x+=Math.sin(p.y/30)*0.4; p.a+=p.s; if(p.a>1||p.a<0)p.s*=-1; if(p.y<0) p.y=cn.height; }); requestAnimationFrame(draw); }
+</script>
+</body>
+</html>
